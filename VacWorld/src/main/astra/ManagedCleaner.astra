@@ -1,0 +1,77 @@
+agent ManagedCleaner extends GridCleaner, MessageProtocol {
+    module Math math;
+
+    types gridCleanerType{
+        formula type(string);
+        formula spotToClean(long,long);
+    }
+    
+    rule +!main(list args) {
+        GridCleaner::!main(args);
+        console.println("Managed Cleaner="+ system.name());
+        int timeToWait = math.randomInt()%1000;
+        int time = 1000;
+        system.sleep(timeToWait);
+        !register();
+    }
+
+    rule +!step(): here("dust") & type("helper")& location(long xL,long yL){
+        ei.clean();
+        -spotToClean(xL,yL);
+        -goingTo(xL,yL);
+    }
+
+    rule +!register(): location(long x, long y){
+        send(inform, "Manager", register(x,y));
+    }
+
+    rule @message(inform, string sender, lazyCleanerHelpers(list helpers,string direction, int maxX)){
+        console.println("Im a lazy cleaner yuhuhu");
+        -alwaysCleanFirst("left");
+        -alwaysCleanFirst("right");
+       +type("lazy");
+        +balancedWalk("true");
+        forall(string helper : helpers) {
+             +helper(helper);
+        }
+    
+       grid.addGridMask(direction,maxX);
+       send(inform, prelude.valueAsString(helpers,0),helper(system.name()));
+       ei.light("on");
+       ei.clean();
+    }
+
+    rule @message(inform, string sender, helper(string lazy)){
+        console.println("Im a helper yuhuhu");
+        +type("helper");
+        +helper(lazy);
+        ei.clean();
+    }
+
+    rule @message(inform, string sender,state(long x,long y,string direction,string left,
+    string forwardLeft,string forward,string forwardRight,string right)){
+        //console.println("get info from lazy="+ sender + " , x=" + x + " ,y=" + y);
+        -spotToClean(x,y);
+        -goingTo(x,y);
+        grid.processState(x,y,direction,left,forwardLeft,forward,forwardRight,right);
+    }
+
+    rule +!updateLocation(): type("lazy") & location(long x,long y)& direction(string direction) & left(string left)
+    & forwardLeft(string forwardLeft) & forward(string forward)& forwardRight(string forwardRight) & right(string right){
+         foreach (helper(string name)) {
+          send(inform,name,state(x,y,direction,left,forwardLeft,forward,forwardRight,right));
+         }
+
+        GridCleaner::!updateLocation();
+    }
+    rule +!updateLocation(): type("helper")&spotToClean(long x, long y) & location(long xL,long yL){
+        console.println("To clean = X" + x + " ,y=" +y);
+       -spotToClean(xL,yL);
+       -+goingTo(x,y);
+       GridCleaner::!updateLocation();
+    }
+      rule +!updateLocation(): type("helper"){
+        console.println("Nothing to clean go random");
+       GridCleaner::!updateLocation();
+    }
+}

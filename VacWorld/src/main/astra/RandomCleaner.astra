@@ -1,0 +1,114 @@
+agent RandomCleaner extends BasicCleaner{
+    module Math math;
+    module Prelude prelude;
+
+    types randomAgentOntology {
+        formula freeLeft();
+        formula freeRight();
+        formula freeForward();
+        formula alwaysCleanFirst(string);
+    }
+
+    inference freeLeft():- ~left("obstacle") & ~left("vac");
+    inference freeRight():- ~right("obstacle") & ~right("vac");
+    inference freeForward():- ~forward("obstacle") & ~forward("vac");
+
+    initial alwaysCleanFirst("right");
+    initial alwaysCleanFirst("left");
+    initial alwaysCleanFirst("forward");
+
+
+    rule +!step(): here("dust"){
+        ei.clean();
+    }
+
+    rule +!step() {
+        !selectPossibleActions();  
+    }
+
+    rule  +!selectPossibleActions(): freeLeft() & freeRight() & freeForward(){
+        !makeMove([1, 1, 1]);
+    }
+
+    rule +!selectPossibleActions(): freeRight() & freeForward(){
+        !makeMove([1, 0, 1]);
+    }
+
+    rule +!selectPossibleActions(): freeLeft() & freeForward(){
+        !makeMove([1, 1, 0]);
+    }
+
+    rule +!selectPossibleActions(): freeLeft()  & freeRight(){
+        !makeMove([0, 1, 1]);
+    }
+
+    rule +!selectPossibleActions(): freeRight(){
+       // console.println("Right");
+        ei.move("right");
+    }
+
+    rule +!selectPossibleActions(): freeForward(){
+        //console.println("forward");
+        ei.move("forward");
+    }
+
+    rule +!selectPossibleActions(): freeLeft(){
+        //console.println("left");  
+        ei.move("left"); 
+    }
+
+    rule  +!selectPossibleActions(){
+        //console.println("trapped");  
+        ei.move("back");
+    }
+
+    rule +!makeMove(list L):forward("dust") & alwaysCleanFirst("forward"){
+        ei.move("forward");
+    }
+
+    rule +!makeMove(list L):left("dust")& alwaysCleanFirst("left"){
+        ei.move("left");
+    }
+
+    rule +!makeMove(list L):right("dust")& alwaysCleanFirst("right"){
+        ei.move("right");
+    }
+
+   
+
+    rule +!makeMove(list L): location(long x, long y) & direction(string direction){
+        //console.println("MAKE MOVE");
+        int forwardWeight = prelude.valueAsInt(L,0);
+        int leftWeight = prelude.valueAsInt(L,1);
+        int rightWeight= prelude.valueAsInt(L,2);
+        list allWeights = [forwardWeight,leftWeight,rightWeight];
+      //  console.println("allWeights=" +allWeights);
+        int totalWeight = 0;
+        forall(int w : allWeights){
+            totalWeight = totalWeight + w;
+        }
+       // console.println("TotalWeight=" + totalWeight);
+        int randomInTotalWeights = math.randomInt() % totalWeight;
+        //console.println("randomInTotalWeights=" + randomInTotalWeights);
+        int choice = -1;
+        int i = 0;
+        int selected = 1;
+        forall(int w : allWeights){
+            if(randomInTotalWeights < w & selected ==1){
+                choice = i;
+                selected = -1;
+            }
+            i = i + 1;
+            randomInTotalWeights = randomInTotalWeights - w ;
+        }
+       // console.println("choice=" + choice);
+        if(choice == 0){
+            ei.move("forward");
+        }else if(choice == 1){
+            ei.move("left");
+        }else if(choice == 2){
+            ei.move("right");
+        }
+       // console.println("choice=" + choice + " DONE");
+    }
+}

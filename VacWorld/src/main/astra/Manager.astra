@@ -1,0 +1,27 @@
+agent Manager extends MessageProtocol{
+    module Console console;
+    module ManagerControl manager;
+
+    types managerAgentOntology {
+        formula registration(string);
+        
+    
+    }
+
+    rule @message(inform, string sender, register(long x, long y)){
+        console.println("registration, agent=" + sender+ " ,x=" + x +  " ,y=" + y);
+        manager.registerCleaner(sender,x,y);
+        //C.println(sender);
+       // debug.dumpBeliefs();
+    }
+
+    rule +registration("true"){
+        manager.assignRoles();
+        console.println("Rgistration done");
+    }
+
+    rule +lazyCleaner(string name,string direction,int maxX,list helpers){
+        console.println("lazy cleaner = " +name +" ,direction=" + direction + " ,maxX=" + maxX + ", helpers=A" + helpers);
+        send(inform,name,lazyCleanerHelpers(helpers,direction,maxX));
+    }
+}

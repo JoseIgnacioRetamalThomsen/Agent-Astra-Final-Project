@@ -1,0 +1,13 @@
+agent MessageProtocol{
+    types sharedMessages{
+        formula register(long, long);
+        formula state(long, long, string, string, string, string, string,string);
+        formula moveWeights(int,int,int);
+        formula test(string);
+        formula lazyCleaner(string,string,int,list);
+        formula lazyCleanerHelpers(list,string,int);
+        formula helper(string);
+        formula helpers(list);
+        
+    }
+}

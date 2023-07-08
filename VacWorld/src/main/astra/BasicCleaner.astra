@@ -1,0 +1,154 @@
+agent  BasicCleaner {
+    module EIS ei;
+    module Console console;
+    module System system;
+    module Debug debug;
+    module Functions functions;
+
+    types baseAgentOntology {
+        formula location(long,long);
+        formula here(string);
+        formula left(string);
+        formula forwardLeft(string);
+        formula forward(string);
+        formula forwardRight(string);
+        formula right(string);
+        formula direction(string);
+        formula task(string);
+        formula light(string);
+        formula taskUpdate(string);
+        formula hereUpdated(string);
+        formula leftUpdated(string);
+        formula forwardLeftUpdated(string);
+        formula forwardUpdated(string);
+        formula forwardRightUpdated(string);
+        formula rightUpdated(string);
+        formula positionUpdated();       
+    }
+
+    initial location(-1l,-1l);
+    initial here("not_init");
+    initial left("not_init");
+    initial forwardLeft("not_init");
+    initial forward("not_init");
+    initial forwardRight("not_init");
+    initial right("not_init");
+    initial direction("not_init");
+    initial task("not_init");
+    initial light("not_init");
+    initial hereUpdated("false");
+    initial leftUpdated("false");
+    initial forwardLeftUpdated("false");
+    initial forwardUpdated("false");
+    initial forwardRightUpdated("false");
+    initial rightUpdated("false");
+    initial taskUpdate("false");
+
+    inference positionUpdated():- taskUpdate("true")& hereUpdated("true")& leftUpdated("true") 
+    & forwardLeftUpdated("true")& forwardUpdated("true") & forwardRightUpdated("true") &rightUpdated("true");
+
+    rule +!main(list args) {
+        console.println("BsicCleaner="+at_index(args, 0, string));
+        string agentName = at_index(args, 0, string);
+        ei.launch("vw","dependency/vacuumworld-1.2.0.jar");        
+        ei.join();
+        ei.link(agentName);
+    }
+
+    rule +$ei.event(funct belief): location(long old_X, long old_Y) & here(string old_here) 
+    & left(string old_left) & forwardLeft(string old_forwardLeft) & forward(string old_forward)
+    & forwardRight(string old_forwardRight) & right(string old_right) & direction(string old_direction)
+    & task(string old_task) & light(string old_light) & taskUpdate(string taskUpdate)
+    & hereUpdated(string hereUpdated)& leftUpdated(string leftUpdated) & forwardLeftUpdated(string forwardLeftUpdated)
+     & forwardUpdated(string forwardUpdated) & forwardRightUpdated(string forwardRightUpdated) &rightUpdated(string rightUpdated){
+        //console.println("new event = " + belief);
+        if(functions.functor(belief)=="location"){
+            long actual_X = functions.valueAsLong(belief,0);
+            long actual_Y = functions.valueAsLong(belief,1);
+           // console.println("New Locationm belief=" + belief + ", x=" + actual_X + ", y=" + actual_Y);
+            -location(old_X,old_Y);
+            +location(actual_X,actual_Y); 
+            wait(location(actual_X,actual_Y));    
+        }else if(functions.functor(belief)=="square"){
+            string actual_location = functions.valueAsString(belief,0);
+            string actual_state = functions.valueAsString(belief,1);
+            if("here" == actual_location){
+                // debug.dumpBeliefs();
+                -here(old_here);
+                +here(actual_state);
+                -+hereUpdated("true");
+            }else if("left" == actual_location){
+                -left(old_left);
+                +left(actual_state);
+                -+leftUpdated("true");
+            }else if("forwardLeft" == actual_location){
+                -forwardLeft(old_forwardLeft);
+                +forwardLeft(actual_state);
+                -+forwardLeftUpdated("true");
+            }else if("forward" == actual_location){
+                -forward(old_forward);
+                +forward(actual_state);
+                -+forwardUpdated("true");
+            }else if("forwardRight" == actual_location){
+                -forwardRight(old_forwardRight);
+                +forwardRight(actual_state);
+                -+forwardRightUpdated("true");
+            }else if("right" == actual_location){
+                -right(old_right);
+                +right(actual_state);
+                -+rightUpdated("true");
+            }           
+        }else if(functions.functor(belief)=="direction"){
+            string actual_direction = functions.valueAsString(belief,0);
+            -direction(old_direction);
+            +direction(actual_direction);
+        }else if(functions.functor(belief)=="task"){
+           //console.println("New task belief=" + belief + ", actual_task="); 
+            string actual_task = functions.valueAsString(belief,0);
+            -task(old_task);
+            +task(actual_task);
+            -+taskUpdate("true");
+        }else if(functions.functor(belief)=="light"){
+            string actual_light = functions.valueAsString(belief,0);
+            -light(old_light);
+            +light(actual_light);
+        }else if(functions.functor(belief)=="bump"){
+            ei.move("back");
+        }else if(functions.functor(belief)=="success"){
+            //console.println("$ei.event SUCCESS");
+            !isUpdate();
+        }
+        else{
+            console.println(belief);
+        }
+    }
+
+    rule +!isUpdate(): positionUpdated() {
+        //console.println("IsUpdate");   
+        -+hereUpdated("false");
+        -+leftUpdated("false");
+        -+forwardLeftUpdated("false");
+        -+forwardUpdated("false");
+        -+forwardRightUpdated("false");
+        -+rightUpdated("false");
+        -+taskUpdate("false");
+        !step();   
+    }
+
+    rule +!isUpdate(){
+        //console.println("In loop");
+        !isUpdate();
+    }
+
+    rule +!isUpdate(){}
+
+    rule +!step() : here("dust"){
+        ei.clean();
+    }
+
+    rule +!step(){
+        //console.println("Step forward"); 
+        ei.move("forward");
+        wait(task("move"));
+    }
+}

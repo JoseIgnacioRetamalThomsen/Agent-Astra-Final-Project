@@ -1,0 +1,78 @@
+agent GridCleaner extends RandomCleaner{
+    module GridControl grid;
+
+    types gridAgentOntology {
+        formula goingTo(long,long);
+        formula updateDone(string);
+        formula balancedWalk(string);
+    }
+
+    initial updateDone("false");
+
+    rule +!main(list args) {
+        console.println("args");
+        BasicCleaner::!main(args);
+        grid.init(20,10);
+        
+    }
+
+    rule +!step(): here("dust"){
+        ei.clean();
+    }
+
+    rule +!isUpdate(): positionUpdated() {
+        //console.println("IsUpdate");   
+        -+hereUpdated("false");
+        -+leftUpdated("false");
+        -+forwardLeftUpdated("false");
+        -+forwardUpdated("false");
+        -+forwardRightUpdated("false");
+        -+rightUpdated("false");
+        -+taskUpdate("false");
+        !updateLocation();
+        wait(updateDone("true"));
+        -+updateDone("false");
+        !step();   
+    }
+
+    rule +!updateLocation():location(long x,long y)& direction(string direction) & left(string left)
+    & forwardLeft(string forwardLeft) & forward(string forward)& forwardRight(string forwardRight) & right(string right){ 
+        if(x ~= -1l){
+            grid.addLocation(x,y,direction,left,forwardLeft,forward,forwardRight,right);
+          //  grid.printGrid();
+            -+updateDone("true");
+        }
+    }
+
+    rule +!makeMove(list L): goingTo(long target_x, long target_y){
+    //console.println("Going  x= " + target_x + ", y" + target_y);
+        if(location(long x, long y)& direction(string direction)){
+            // console.println("From x= " + x + ", y" + y);
+            grid.getNextMoveWhenGoingTo(target_x,target_y,x,y,direction,string result);
+            if(result ~= "done"){
+                if(result=="forward"){
+                    ei.move("forward");
+                }else if(result == "left"){
+                    ei.move("left");
+                }else if(result == "right"){
+                    ei.move("right");
+                }else{
+              ei.move(result);
+               }
+            }else{
+                RandomCleaner::!makeMove(L);
+            }
+        }
+    }
+
+     rule +!makeMove(list posibleMoves): balancedWalk("true"){
+         //console.println("Balanced Walk");
+         if(location(long x, long y)& direction(string direction)){
+           // console.println("balanced walk");
+            grid.getStepCounts(direction,x,y, posibleMoves,list result);
+            //grid.printStepCountGrid();
+            //console.println("balanced walk, results= " + result);
+            RandomCleaner::!makeMove(result);
+         }
+    }
+}

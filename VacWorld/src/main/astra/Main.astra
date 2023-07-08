@@ -1,0 +1,37 @@
+agent Main {
+    module Console Console;
+    module System system;
+	module EIS ei;
+    module Debug debug;
+
+    rule +!main(list args) {		
+ 		ei.launch("vw","dependency/vacuumworld-1.2.0.jar");
+		ei.init([generation("no")]);
+		ei.join();
+		ei.startEnv();
+
+        system.createAgent("Manager", "Manager");
+		system.setMainGoal("Manager", []);
+
+        // system.createAgent("Decco", "BasicCleaner");
+		// system.setMainGoal("Decco", ["Decco"]);
+        // system.createAgent("Decco", "RandomCleaner");
+		// system.setMainGoal("Decco", ["Decco"]);        
+        // system.createAgent("Decco", "GridCleaner");
+		// system.setMainGoal("Decco", ["Decco"]);
+        // system.createAgent("Decco", "ManagedCleaner");
+		// system.setMainGoal("Decco", ["Decco"]);
+
+        list E = ei.freeEntities();
+        forall(string ent : E) {
+		//	C.println("E="+E);
+            system.createAgent(ent, "ManagedCleaner");
+            system.setMainGoal(ent, [ent]);
+		}
+    //list E = ei.freeEntities();
+    // forall(string ent : E) {
+    // //	C.println("E="+E);
+    //     system.createAgent(ent, "RandomCleaner");
+    //     system.setMainGoal(ent, [ent]);
+    // }
+}
